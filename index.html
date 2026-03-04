@@ -16,7 +16,7 @@
     line-height: 1.65;
     max-width: 900px;
     margin: 0 auto;
-    padding: 40px 32px 80px;
+    padding: 40px 32px 0;
   }
 
   /* HEADER */
@@ -59,7 +59,7 @@
     font-weight: 600;
     margin-bottom: 20px;
     padding-bottom: 10px;
-    border-bottom: 1px solid #dedad4;
+    border-bottom: 1px solid #e8e4de;
   }
   .section h2 {
     font-family: 'Cormorant Garamond', Georgia, serif;
@@ -92,24 +92,25 @@
     margin-bottom: 16px;
   }
   .section ul li {
-    padding: 4px 0 4px 16px;
+    padding: 4px 0 4px 14px;
     position: relative;
   }
   .section ul li::before {
-    content: '—';
+    content: '-';
     position: absolute;
     left: 0;
     color: #bdb8b0;
-    font-size: 12px;
+    font-size: 13px;
   }
 
-  /* INFO BLOCK */
+  /* INFO BLOCK - matches callout style */
   .info-block {
-    background: #fafaf8;
+    background: #ffffff;
     border: 1px solid #e8e4de;
-    border-radius: 2px;
+    border-left: 3px solid rgb(0,48,91);
+    border-radius: 0 4px 4px 0;
     padding: 24px 28px;
-    margin-bottom: 16px;
+    margin-bottom: 24px;
   }
 
   /* CARD GRID */
@@ -122,15 +123,17 @@
   .card {
     background: #fafaf8;
     border: 1px solid #e8e4de;
-    border-radius: 2px;
+    border-left: 3px solid rgb(0,48,91);
+    border-radius: 0 4px 4px 0;
     padding: 24px;
   }
   .card .num {
     font-size: 11px;
     font-weight: 600;
-    color: #bdb8b0;
+    color: rgb(0,48,91);
     letter-spacing: 2px;
     margin-bottom: 10px;
+    opacity: 0.5;
   }
   .card h3 {
     font-size: 15px;
@@ -187,32 +190,20 @@
   /* CALLOUT */
   .callout {
     background: #ffffff;
-    border: 1px solid #dedad4;
-    border-left: 3px solid #2e4d6b;
+    border: 1px solid #e8e4de;
+    border-left: 3px solid rgb(0,48,91);
     border-radius: 0 4px 4px 0;
     padding: 24px 28px;
     margin: 24px 0;
   }
-  .callout h3 { color: #2e4d6b; font-size: 14px; font-weight: 600; margin: 0 0 6px 0; }
+  .callout h3 { color: rgb(0,48,91); font-size: 14px; font-weight: 600; margin: 0 0 6px 0; }
   .callout p { font-size: 14px; color: #4a4642; margin: 0; }
 
   /* DIVIDER */
   .divider {
     border: none;
-    border-top: 1px solid #dedad4;
+    border-top: 1px solid #e8e4de;
     margin: 52px 0;
-  }
-
-  /* FOOTER */
-  .footer {
-    text-align: center;
-    padding: 32px 0 0;
-    font-size: 11px;
-    color: #9a9590;
-    margin-top: 48px;
-    border-top: 1px solid #dedad4;
-    letter-spacing: 1px;
-    text-transform: uppercase;
   }
 
   /* ARCHITECTURE */
@@ -252,9 +243,9 @@
     color: #5a4820;
   }
   .arch-node.core {
-    background: #e8edf3;
-    border-color: #b4c4d8;
-    color: #1e3550;
+    background: rgb(0,48,91);
+    border-color: rgb(0,38,72);
+    color: #ffffff;
     font-weight: 600;
     padding: 13px 28px;
     font-size: 13px;
@@ -290,6 +281,62 @@
     line-height: 1.5;
     font-style: italic;
   }
+
+  /* CTA BAND */
+  .cta-band {
+    background: rgb(0,48,91);
+    margin: 64px -32px 0;
+    padding: 48px 32px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 32px;
+    flex-wrap: wrap;
+  }
+  .cta-band-text h3 {
+    font-family: 'Cormorant Garamond', Georgia, serif;
+    font-size: 26px;
+    font-weight: 300;
+    color: #ffffff;
+    margin-bottom: 8px;
+    letter-spacing: 0.3px;
+  }
+  .cta-band-text p {
+    font-size: 13px;
+    color: rgba(255,255,255,0.65);
+    margin: 0;
+    line-height: 1.6;
+    max-width: 480px;
+  }
+  .cta-band-actions {
+    display: flex;
+    gap: 12px;
+    flex-shrink: 0;
+    flex-wrap: wrap;
+  }
+  .cta-btn {
+    display: inline-block;
+    padding: 12px 24px;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    text-decoration: none;
+    border-radius: 2px;
+    cursor: pointer;
+    border: none;
+    transition: opacity 0.15s;
+  }
+  .cta-btn:hover { opacity: 0.85; }
+  .cta-btn-primary {
+    background: #ffffff;
+    color: rgb(0,48,91);
+  }
+  .cta-btn-secondary {
+    background: transparent;
+    color: rgba(255,255,255,0.85);
+    border: 1px solid rgba(255,255,255,0.35);
+  }
 </style>
 </head>
 <body>
@@ -316,9 +363,9 @@
 
   <h3>Recent Deals</h3>
   <ul>
-    <li><strong>3645 Oakcliff Rd, Doraville, GA</strong> — ~60K SF industrial, 4.5 acres. Currently being repositioned.</li>
-    <li><strong>1458 Beaver Ruin Rd, Norcross, GA</strong> — ~67K SF industrial facility.</li>
-    <li><strong>North Atlanta Commerce Center, Alpharetta, GA</strong> — 113K SF lease activity.</li>
+    <li><strong>3645 Oakcliff Rd, Doraville, GA</strong> - ~60K SF industrial, 4.5 acres. Currently being repositioned.</li>
+    <li><strong>1458 Beaver Ruin Rd, Norcross, GA</strong> - ~67K SF industrial facility.</li>
+    <li><strong>North Atlanta Commerce Center, Alpharetta, GA</strong> - 113K SF lease activity.</li>
   </ul>
 
   <h3>Acquisition Criteria</h3>
@@ -346,12 +393,12 @@
     <div class="card">
       <div class="num">02</div>
       <h3>Deal Pipeline</h3>
-      <p>Every match enters a structured pipeline — status tracking, priority scoring, notes, activity history. Integrates with existing CRM or runs standalone. Replaces spreadsheet workflows.</p>
+      <p>Every match enters a structured pipeline - status tracking, priority scoring, notes, activity history. Integrates with existing CRM or runs standalone. Replaces spreadsheet workflows.</p>
     </div>
     <div class="card">
       <div class="num">03</div>
       <h3>Owner Intelligence</h3>
-      <p>Entity lookups via county records, Secretary of State filings, and contact enrichment APIs (RocketReach, Apollo, public registrar data). Owner names, mailing addresses, phone, email — cross-referenced for accuracy.</p>
+      <p>Entity lookups via county records, Secretary of State filings, and contact enrichment APIs (RocketReach, Apollo, public registrar data). Owner names, mailing addresses, phone, email - cross-referenced for accuracy.</p>
     </div>
     <div class="card">
       <div class="num">04</div>
@@ -380,13 +427,13 @@
   <p class="source-note">Sources: county tax assessor records, Secretary of State filings, court records, building permit databases, USPS change-of-address data.</p>
 
   <h3>Comparable Sales Analysis</h3>
-  <p>Automated comps pulled from county records and listing platforms — recent sales within target radius, price-per-SF trends, cap rate movements. Included in outreach and pipeline scoring.</p>
+  <p>Automated comps pulled from county records and listing platforms - recent sales within target radius, price-per-SF trends, cap rate movements. Included in outreach and pipeline scoring.</p>
 
   <h3>CRM Integration</h3>
-  <p>Multi-touch outreach sequencing — email, direct mail triggers, call prep sheets with talking points per property. Tracks response status, follow-up timing, and adapts cadence based on engagement. Integrates with existing CRM or built standalone.</p>
+  <p>Multi-touch outreach sequencing - email, direct mail triggers, call prep sheets with talking points per property. Tracks response status, follow-up timing, and adapts cadence based on engagement. Integrates with existing CRM or built standalone.</p>
 
   <h3>Market Reports</h3>
-  <p>Automated briefings on target markets — new listings, recent trades, rent trends, vacancy shifts, zoning changes. Data sourced from CoStar API, county records, Crexi, and municipal planning databases.</p>
+  <p>Automated briefings on target markets - new listings, recent trades, rent trends, vacancy shifts, zoning changes. Data sourced from CoStar API, county records, Crexi, and municipal planning databases.</p>
 </div>
 
 <hr class="divider">
@@ -480,7 +527,7 @@
 
   <div class="callout">
     <h3>Single Integrated System</h3>
-    <p>A single system built for your specific criteria. It runs locally, adapts as your strategy evolves, and integrates the same public and paid data sources as enterprise platforms — with added AI analysis and automation.</p>
+    <p>A single system built for your specific criteria. It runs locally, adapts as your strategy evolves, and integrates the same public and paid data sources as enterprise platforms - with added AI analysis and automation.</p>
   </div>
 </div>
 
@@ -527,7 +574,7 @@
       </tr>
       <tr>
         <td>AI Analysis & Drafting</td>
-        <td>Claude Opus (Anthropic), Gemini Pro (Google), Grok (xAI) — routed by task</td>
+        <td>Claude Opus (Anthropic), Gemini Pro (Google), ChatGPT Codex (OpenAI), Grok (xAI) - routed by task</td>
         <td>Custom Build</td>
       </tr>
       <tr>
@@ -584,6 +631,7 @@
     <div class="arch-row" style="margin-top: 8px;">
       <div class="arch-node" style="font-size: 11px; min-width: 90px;">Claude Opus</div>
       <div class="arch-node" style="font-size: 11px; min-width: 90px;">Gemini Pro</div>
+      <div class="arch-node" style="font-size: 11px; min-width: 90px;">ChatGPT Codex</div>
       <div class="arch-node" style="font-size: 11px; min-width: 90px;">Grok</div>
     </div>
 
@@ -599,12 +647,20 @@
   </div>
 
   <p class="source-note" style="text-align: center; margin-top: 12px;">
-    Modular architecture — AI models are swappable as better options become available. Your system stays current without rebuilding.
+    Modular architecture - we continuously evaluate and deploy the best available AI models, upgrading by default as the field advances. Your system stays current without rebuilding.
   </p>
 </div>
 
-<div class="footer">
-  LeveeTech LLC
+<!-- CTA BAND -->
+<div class="cta-band">
+  <div class="cta-band-text">
+    <h3>Questions? We'd like to hear from you.</h3>
+    <p>Request additional information, leave feedback on this proposal, or start a conversation about what an acquisitions system could look like for Convoy Capital.</p>
+  </div>
+  <div class="cta-band-actions">
+    <a href="mailto:henry@leveetech.ai?subject=Convoy%20Capital%20-%20Acquisitions%20Intelligence%20Inquiry" class="cta-btn cta-btn-primary">Get in Touch</a>
+    <a href="mailto:henry@leveetech.ai?subject=Convoy%20Capital%20-%20Proposal%20Feedback" class="cta-btn cta-btn-secondary">Leave Feedback</a>
+  </div>
 </div>
 
 </body>
