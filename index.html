@@ -282,6 +282,37 @@
     font-style: italic;
   }
 
+  /* AGENT BAND */
+  .agent-band {
+    background: rgb(0,48,91);
+    margin: 0 -32px 60px;
+    padding: 14px 32px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+  }
+  .agent-band p {
+    font-size: 12px;
+    color: rgba(255,255,255,0.75);
+    margin: 0;
+    letter-spacing: 0.2px;
+  }
+  .agent-band a {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: #ffffff;
+    text-decoration: none;
+    white-space: nowrap;
+    padding: 6px 16px;
+    border: 1px solid rgba(255,255,255,0.35);
+    border-radius: 2px;
+    flex-shrink: 0;
+  }
+  .agent-band a:hover { background: rgba(255,255,255,0.08); }
+
   /* CTA BAND */
   .cta-band {
     background: rgb(0,48,91);
@@ -342,9 +373,15 @@
 <body>
 
 <div class="header">
-  <div class="tag">Acquisitions Intelligence</div>
+  <div class="tag">Acquisitions Intelligence Agent Design</div>
   <h1>Convoy Capital Partners</h1>
   <div class="prepared">Prepared by LeveeTech LLC · March 2026</div>
+</div>
+
+<!-- AGENT BAND -->
+<div class="agent-band">
+  <p>Questions about this proposal? Our acquisitions agent is available for product questions and feedback.</p>
+  <a href="https://t.me/ConvoyCap_bot" target="_blank">Chat with the Agent &rarr;</a>
 </div>
 
 <!-- FIRM PROFILE -->
