@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Convoy Capital Intelligence — Live Demo</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Cormorant+Garamond:wght@300;400&display=swap');
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  :root {
+    --blue: rgb(0,48,91);
+    --blue-light: rgba(0,48,91,0.08);
+    --blue-mid: rgba(0,48,91,0.72);
+    --green: #16a34a;
+    --amber: #d97706;
+    --red: #dc2626;
+    --bg: #fafaf9;
+    --card: #ffffff;
+    --border: #e8e4de;
+    --text: #1a1816;
+    --muted: #6b6560;
+  }
+  body { font-family: 'Inter', -apple-system, sans-serif; background: var(--bg); color: var(--text); }
+  
+  /* Header */
+  .header {
+    background: var(--card);
+    border-bottom: 1px solid var(--border);
+    padding: 20px 32px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .header h1 {
+    font-family: 'Cormorant Garamond', serif;
+    font-weight: 300; font-size: 24px; color: var(--blue);
+  }
+  .header .tag {
+    font-size: 10px; letter-spacing: 3px; text-transform: uppercase;
+    color: var(--muted); font-weight: 500;
+  }
+  .header .stats {
+    display: flex; gap: 24px; font-size: 13px; color: var(--muted);
+  }
+  .header .stats strong { color: var(--blue); font-weight: 600; }
+
+  /* Layout */
+  .app { display: grid; grid-template-columns: 1fr 380px; height: calc(100vh - 65px); }
+  
+  /* Map */
+  #map { width: 100%; height: 100%; }
+  
+  /* Sidebar */
+  .sidebar {
+    background: var(--card); border-left: 1px solid var(--border);
+    display: flex; flex-direction: column; overflow: hidden;
+  }
+  
+  /* Filters */
+  .filters {
+    padding: 16px 20px; border-bottom: 1px solid var(--border);
+    display: flex; gap: 8px; flex-wrap: wrap;
+  }
+  .filters select, .filters input {
+    font-family: 'Inter', sans-serif; font-size: 12px;
+    padding: 6px 10px; border: 1px solid var(--border);
+    border-radius: 4px; background: var(--bg); color: var(--text);
+  }
+  .filters select:focus, .filters input:focus { outline: none; border-color: var(--blue); }
+  
+  /* Property list */
+  .prop-list { flex: 1; overflow-y: auto; }
+  .prop-card {
+    padding: 14px 20px; border-bottom: 1px solid var(--border);
+    cursor: pointer; transition: background 0.15s;
+  }
+  .prop-card:hover { background: var(--blue-light); }
+  .prop-card.active { background: var(--blue-light); border-left: 3px solid var(--blue); }
+  .prop-card .address { font-size: 13px; font-weight: 500; margin-bottom: 4px; }
+  .prop-card .meta { font-size: 11px; color: var(--muted); display: flex; gap: 12px; flex-wrap: wrap; }
+  .prop-card .score-badge {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 32px; height: 32px; border-radius: 50%;
+    font-size: 12px; font-weight: 700; color: white; float: right;
+  }
+  .score-high { background: var(--green); }
+  .score-mid { background: var(--amber); }
+  .score-low { background: var(--red); }
+
+  /* Detail panel */
+  .detail-panel {
+    display: none; position: absolute; bottom: 0; left: 0; right: 380px;
+    background: var(--card); border-top: 1px solid var(--border);
+    padding: 24px 32px; max-height: 280px; overflow-y: auto;
+    box-shadow: 0 -4px 24px rgba(0,0,0,0.08);
+  }
+  .detail-panel.open { display: block; }
+  .detail-panel .close-btn {
+    position: absolute; top: 12px; right: 16px; background: none;
+    border: none; font-size: 18px; cursor: pointer; color: var(--muted);
+  }
+  .detail-panel h3 { font-size: 16px; font-weight: 500; margin-bottom: 12px; }
+  .detail-grid {
+    display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px;
+  }
+  .detail-item { font-size: 12px; }
+  .detail-item .label { color: var(--muted); margin-bottom: 2px; }
+  .detail-item .value { font-weight: 500; }
+
+  /* Score breakdown */
+  .breakdown { margin-top: 16px; }
+  .breakdown h4 { font-size: 13px; font-weight: 500; margin-bottom: 8px; color: var(--blue); }
+  .breakdown-bar {
+    display: flex; align-items: center; margin-bottom: 4px; font-size: 11px;
+  }
+  .breakdown-bar .bar-label { width: 100px; color: var(--muted); }
+  .breakdown-bar .bar-track {
+    flex: 1; height: 6px; background: var(--bg); border-radius: 3px; margin: 0 8px;
+  }
+  .breakdown-bar .bar-fill {
+    height: 100%; border-radius: 3px; background: var(--blue);
+  }
+  .breakdown-bar .bar-val { width: 30px; text-align: right; font-weight: 500; }
+
+  /* Leaflet popup override */
+  .leaflet-popup-content { font-family: 'Inter', sans-serif; font-size: 12px; line-height: 1.5; }
+  .leaflet-popup-content strong { font-weight: 600; }
+
+  /* Mobile */
+  @media (max-width: 900px) {
+    .app { grid-template-columns: 1fr; grid-template-rows: 50vh 1fr; }
+    .detail-panel { right: 0; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <div class="tag">Acquisitions Intelligence</div>
+    <h1>Convoy Capital Partners</h1>
+  </div>
+  <div class="stats">
+    <span><strong id="propCount">0</strong> properties</span>
+    <span><strong id="avgScore">0</strong> avg score</span>
+    <span id="scanTime"></span>
+  </div>
+</div>
+
+<div class="app">
+  <div style="position:relative;">
+    <div id="map"></div>
+    <div class="detail-panel" id="detailPanel">
+      <button class="close-btn" onclick="closeDetail()">&times;</button>
+      <div id="detailContent"></div>
+    </div>
+  </div>
+  
+  <div class="sidebar">
+    <div class="filters">
+      <select id="filterScore" onchange="applyFilters()">
+        <option value="0">All scores</option>
+        <option value="80">80+</option>
+        <option value="70">70+</option>
+        <option value="60">60+</option>
+      </select>
+      <select id="filterTax" onchange="applyFilters()">
+        <option value="">All tax status</option>
+        <option value="Delinquent">Delinquent</option>
+        <option value="Current">Current</option>
+      </select>
+      <select id="sortBy" onchange="applyFilters()">
+        <option value="score">Sort: Score</option>
+        <option value="value">Sort: Value</option>
+        <option value="size">Sort: Size</option>
+      </select>
+    </div>
+    <div class="prop-list" id="propList"></div>
+  </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script id="propertyData" type="application/json">{"properties":[{"id":11,"osmId":1000011,"lat":33.781890069676464,"lon":-84.55775433327793,"address":"1519 Chattahoochee Ave, Atlanta, GA","buildingType":"industrial","name":null,"owner":"Lawrenceville Industrial Trust LLC","ownerState":"TX","assessedValue":13789800,"buildingSF":127439,"yearBuilt":1994,"lastSaleDate":"2008-03-09","taxStatus":"Delinquent","zoning":"I-2 Industrial","acreage":8.5,"enrichmentSource":"simulated","score":94,"scoreBreakdown":{"sizeMatch":21,"valueRange":20,"holdDuration":20,"taxStatus":15,"location":8,"ownerType":10}},{"id":118,"osmId":1000118,"lat":33.727666773160614,"lon":-84.28726492122492,"address":"1361 Buford Hwy, Atlanta, GA","buildingType":"industrial","name":null,"owner":"Peachtree Industrial Holdings LLC","ownerState":"TN","assessedValue":14942536,"buildingSF":127548,"yearBuilt":1987,"lastSaleDate":"2010-03-10","taxStatus":"Delinquent","zoning":"C-2 Commercial","acreage":8.5,"enrichmentSource":"simulated","score":94,"scoreBreakdown":{"sizeMatch":21,"valueRange":20,"holdDuration":20,"taxStatus":15,"location":8,"ownerType":10}},{"id":180,"osmId":1000180,"lat":33.74028158703845,"lon":-84.25978212734664,"address":"4065 Howell Mill Rd, Atlanta, GA","buildingType":"industrial","name":null,"owner":"Lawrenceville Industrial Trust LLC","ownerState":"VA","assessedValue":17328732,"buildingSF":127611,"yearBuilt":1980,"lastSaleDate":"2017-02-04","taxStatus":"Delinquent","zoning":"I-1 Industrial","acreage":8.51,"enrichmentSource":"simulated","score":92,"scoreBreakdown":{"sizeMatch":21,"valueRange":20,"holdDuration":18,"taxStatus":15,"location":8,"ownerType":10}},{"id":73,"osmId":1000073,"lat":33.846677011946845,"lon":-83.95913316287019,"address":"2518 Defoors Ferry Rd, Atlanta, GA","buildingType":"industrial","name":null,"owner":"ATL Flex Space Ventures LLC","ownerState":"CA","assessedValue":16173400,"buildingSF":127502,"yearBuilt":1987,"lastSaleDate":"2016-02-03","taxStatus":"Delinquent","zoning":"I-2 Industrial","acreage":8.5,"enrichmentSource":"simulated","score":88,"scoreBreakdown":{"sizeMatch":21,"valueRange":20,"holdDuration":20,"taxStatus":15,"location":2,"ownerType":10}},{"id":116,"osmId":1000116,"lat":33.69198482017218,"lon":-83.81779867673087,"address":"8660 Fulton Industrial Blvd, Atlanta, GA","buildingType":"industrial","name":null,"owner":"Lawrenceville Industrial Trust LLC","ownerState":"IL","assessedValue":10915794,"buildingSF":127546,"yearBuilt":2009,"lastSaleDate":"2011-04-16","taxStatus":"Delinquent","zoning":"M-2 Heavy Industrial","acreage":8.5,"enrichmentSource":"simulated","score":88,"scoreBreakdown":{"sizeMatch":21,"valueRange":20,"holdDuration":20,"taxStatus":15,"location":2,"ownerType":10}},{"id":148,"osmId":1000148,"lat":33.74182797762736,"lon":-84.27548354237851,"address":"479 Armour Dr, Atlanta, GA","buildingType":"industrial","name":null,"owner":"Lawrenceville Industrial Trust LLC","ownerState":"GA","assessedValue":14121502,"buildingSF":127579,"yearBuilt":1972,"lastSaleDate":"2005-12-07","taxStatus":"Delinquent","zoning":"M-1 Light Industrial","acreage":8.51,"enrichmentSource":"simulated","score":86,"scoreBreakdown":{"sizeMatch":21,"valueRange":20,"holdDuration":20,"taxStatus":15,"location":8,"ownerType":2}},{"id":12,"osmId":1000012,"lat":33.82690930192071,"lon":-84.33657677037321,"address":"682 Buford Hwy, Atlanta, GA","buildingType":"industrial","name":null,"owner":"Tucker Industrial Holdings LLC","ownerState":"VA","assessedValue":15801489,"buildingSF":127440,"yearBuilt":1983,"lastSaleDate":"2016-02-20","taxStatus":"Current","zoning":"C-2 Commercial","acreage":8.5,"enrichmentSource":"simulated","score":84,"scoreBreakdown":{"sizeMatch":21,"valueRange":20,"holdDuration":20,"taxStatus":3,"location":10,"ownerType":10}},{"id":26,"osmId":1000026,"lat":33.82811951858748,"lon":-84.59239835626668,"address":"3594 Zonolite Rd, Atlanta, GA","buildingType":"industrial","name":null,"owner":"Conyers Distribution LLC","ownerState":"GA","assessedValue":13379494,"buildingSF":127454,"yearBuilt":2009,"lastSaleDate":"2006-01-06","taxStatus":"Delinquent","zoning":"M-2 Heavy Industrial","acreage":8.5,"enrichmentSource":"simulated","score":84,"scoreBreakdown":{"sizeMatch":21,"valueRange":20,"holdDuration":20,"taxStatus":15,"location":6,"ownerType":2}},{"id":39,"osmId":1000039,"lat":33.760955335629134,"lon":-84.31787428457092,"address":"6661 Jimmy Carter Blvd, Atlanta, GA","buildingType":"industrial","name":null,"owner":"Hartsfield Logistics Group LLC","ownerState":"GA","assessedValue":24241103,"buildingSF":127468,"yearBuilt":2001,"lastSaleDate":"2005-11-10","taxStatus":"Delinquent","zoning":"M-1 Light Industrial","acreage":8.5,"enrichmentSource":"simulated","score":84,"scoreBreakdown":{"sizeMatch":21,"valueRange":16,"holdDuration":20,"taxStatus":15,"location":10,"ownerType":2}},{"id":86,"osmId":1000086,"lat":33.73612422243331,"lon":-84.05630514496593,"address":"4481 Lawrenceville Hwy, Atlanta, GA","buildingType":"industrial","name":null,"owner":"Peachtree Industrial Holdings LLC","ownerState":"GA","assessedValue":11737485,"buildingSF":127516,"yearBuilt":1979,"lastSaleDate":"2015-10-08","taxStatus":"Delinquent","zoning":"M-1 Light Industrial","acreage":8.5,"enrichmentSource":"simulated","score":84,"scoreBreakdown":{"sizeMatch":21,"valueRange":20,"holdDuration":20,"taxStatus":15,"location":6,"ownerType":2}},{"id":88,"osmId":1000088,"lat":34.03849101167963,"lon":-84.25050595072145,"address":"2948 Northside Dr, Atlanta, GA","buildingType":"industrial","name":null,"owner":"Norcross Logistics LLC","ownerState":"GA","assessedValue":15763293,"buildingSF":127518,"yearBuilt":2002,"lastSaleDate":"2014-03-05","taxStatus":"Delinquent","zoning":"C-2 Commercial","acreage":8.5,"enrichmentSource":"simulated","score":84,"scoreBreakdown":{"sizeMatch":21,"valueRange":20,"holdDuration":20,"taxStatus":15,"location":6,"ownerType":2}},{"id":96,"osmId":1000096,"lat":33.69475750158984,"lon":-84.45706817308167,"address":"3308 Defoors Ferry Rd, Atlanta, GA","buildingType":"industrial","name":null,"owner":"Georgia Industrial Trust LLC","ownerState":"VA","assessedValue":16564671,"buildingSF":127526,"yearBuilt":2004,"lastSaleDate":"2008-08-26","taxStatus":"Current","zoning":"I-1 Industrial","acreage":8.5,"enrichmentSource":"simulated","score":84,"scoreBreakdown":{"sizeMatch":21,"valueRange":20,"holdDuration":20,"taxStatus":3,"location":10,"ownerType":10}},{"id":131,"osmId":1000131,"lat":33.89859705972355,"lon":-84.56674504053476,"address":"7483 Marietta Blvd, Atlanta, GA","buildingType":"industrial","name":null,"owner":"Conyers Distribution LLC","ownerState":"GA","assessedValue":10504803,"buildingSF":127561,"yearBuilt":1979,"lastSaleDate":"2009-05-10","taxStatus":"Delinquent","zoning":"I-1 Industrial","acreage":8.5,"enrichmentSource":"simulated","score":84,"scoreBreakdown":{"sizeMatch":21,"valueRange":20,"holdDuration":20,"taxStatus":15,"location":6,"ownerType":2}},{"id":133,"osmId":1000133,"lat":33.92291510870952,"lon":-84.22522645334269,"address":"6473 Chattahoochee Ave, Atlanta, GA","buildingType":"industrial","name":null,"owner":"Dunwoody Asset Management LLC","ownerState":"GA","assessedValue":14532013,"buildingSF":127563,"yearBuilt":2002,"lastSaleDate":"2007-10-06","taxStatus":"Delinquent","zoning":"M-1 Light Industrial","acreage":8.5,"enrichmentSource":"simulated","score":84,"scoreBreakdown":{"sizeMatch":21,"valueRange":20,"holdDuration":20,"taxStatus":15,"location":6,"ownerType":2}},{"id":181,"osmId":1000181,"lat":33.75268262676213,"lon":-84.3809428652571,"address":"4129 Jimmy Carter Blvd, Atlanta, GA","buildingType":"industrial","name":null,"owner":"Tucker Industrial Holdings LLC","ownerState":"OH","assessedValue":19343164,"buildingSF":127612,"yearBuilt":1969,"lastSaleDate":"2008-01-14","taxStatus":"Current","zoning":"M-2 Heavy Industrial","acreage":8.51,"enrichmentSource":"simulated","score":84,"scoreBreakdown":{"sizeMatch":21,"valueRange":20,"holdDuration":20,"taxStatus":3,"location":10,"ownerType":10}},{"id":9,"osmId":1000009,"lat":33.8854099255385,"lon":-83.98460767211822,"address":"3198 Marietta Blvd, Atlanta, GA","buildingType":"industrial","name":null,"owner":"Piedmont Distribution LLC","ownerState":"TN","assessedValue":25058956,"buildingSF":127437,"yearBuilt":1971,"lastSaleDate":"2010-04-15","taxStatus":"Delinquent","zoning":"C-2 Commercial","acreage":8.5,"enrichmentSource":"simulated","score":83,"scoreBreakdown":{"sizeMatch":21,"valueRange":15,"holdDuration":20,"taxStatus":15,"location":2,"ownerType":10}},{"id":24,"osmId":1000024,"lat":33.75369618139574,"lon":-84.32524251465242,"address":"4119 Lawrenceville Hwy, Atlanta, GA","buildingType":"industrial","name":null,"owner":"Norcross Logistics LLC","ownerState":"GA","assessedValue":24649983,"buildingSF":127452,"yearBuilt":1986,"lastSaleDate":"2008-09-10","taxStatus":"Delinquent","zoning":"M-1 Light Industrial","acreage":8.5,"enrichmentSource":"simulated","score":83,"scoreBreakdown":{"sizeMatch":21,"valueRange":15,"holdDuration":20,"taxStatus":15,"location":10,"ownerType":2}},{"id":98,"osmId":1000098,"lat":33.76493920228904,"lon":-84.38691920953515,"address":"7084 Howell Mill Rd, Atlanta, GA","buildingType":"industrial","name":null,"owner":"Roswell Property Ventures LLC","ownerState":"CA","assessedValue":20590871,"buildingSF":127528,"yearBuilt":1982,"lastSaleDate":"2006-06-19","taxStatus":"Current","zoning":"I-2 Industrial","acreage":8.5,"enrichmentSource":"simulated","score":83,"scoreBreakdown":{"sizeMatch":21,"valueRange":19,"holdDuration":20,"taxStatus":3,"location":10,"ownerType":10}},{"id":193,"osmId":1000193,"lat":33.79100684946497,"lon":-84.19660579859894,"address":"8403 Defoors Ferry Rd, Atlanta, GA","buildingType":"industrial","name":null,"owner":"Norcross Logistics LLC","ownerState":"GA","assessedValue":12889048,"buildingSF":127624,"yearBuilt":1972,"lastSaleDate":"2017-07-09","taxStatus":"Delinquent","zoning":"I-1 Industrial","acreage":8.51,"enrichmentSource":"simulated","score":83,"scoreBreakdown":{"sizeMatch":21,"valueRange":20,"holdDuration":17,"taxStatus":15,"location":8,"ownerType":2}},{"id":72,"osmId":1000072,"lat":33.721212261841835,"lon":-84.25681961593853,"address":"5722 Krog St, Atlanta, GA","buildingType":"industrial","name":null,"owner":"Forest Park Logistics LLC","ownerState":"OH","assessedValue":14160729,"buildingSF":127501,"yearBuilt":1998,"lastSaleDate":"2008-03-20","taxStatus":"Current","zoning":"M-2 Heavy Industrial","acreage":8.5,"enrichmentSource":"simulated","score":82,"scoreBreakdown":{"sizeMatch":21,"valueRange":20,"holdDuration":20,"taxStatus":3,"location":8,"ownerType":10}},{"id":179,"osmId":1000179,"lat":33.64233881206469,"lon":-84.45853127525982,"address":"6099 Fulton Industrial Blvd, Atlanta, GA","buildingType":"industrial","name":null,"owner":"Alpharetta Flex Holdings LLC","ownerState":"CA","assessedValue":15314332,"buildingSF":127610,"yearBuilt":1991,"lastSaleDate":"2009-03-21","taxStatus":"Current","zoning":"I-2 Industrial","acreage":8.51,"enrichmentSource":"simulated","score":82,"scoreBreakdown":{"sizeMatch":21,"valueRange":20,"holdDuration":20,"taxStatus":3,"location":8,"ownerType":10}},{"id":71,"osmId":1000071,"lat":33.72513918278286,"lon":-84.25720325564704,"address":"6598 Zonolite Rd, Atlanta, GA","buildingType":"industrial","name":null,"owner":"Hartsfield Logistics Group LLC","ownerState":"GA","assessedValue":12148090,"buildingSF":127500,"yearBuilt":2009,"lastSaleDate":"2018-08-08","taxStatus":"Delinquent","zoning":"I-2 Industrial","acreage":8.5,"enrichmentSource":"simulated","score":81,"scoreBreakdown":{"sizeMatch":21,"valueRange":20,"holdDuration":15,"taxStatus":15,"location":8,"ownerType":2}},{"id":10,"osmId":1000010,"lat":33.78781659746339,"lon":-84.38631038347846,"address":"5868 Pleasantdale Rd, Atlanta, GA","buildingType":"industrial","name":null,"owner":"Alpharetta Flex Holdings LLC","ownerState":"IL","assessedValue":11778142,"buildingSF":127438,"yearBuilt":2005,"lastSaleDate":"2018-03-26","taxStatus":"Current","zoning":"M-1 Light Industrial","acreage":8.5,"enrichmentSource":"simulated","score":80,"scoreBreakdown":{"sizeMatch":21,"valueRange":20,"holdDuration":16,"taxStatus":3,"location":10,"ownerType":10}},{"id":33,"osmId":1000033,"lat":33.75703625083625,"lon":-84.10676721772809,"address":"2660 Memorial Dr, Atlanta, GA","buildingType":"industrial","name":null,"owner":"Doraville Property Group LLC","ownerState":"FL","assessedValue":12168392,"buildingSF":127462,"yearBuilt":1977,"lastSaleDate":"2010-09-21","taxStatus":"Current","zoning":"I-2 Industrial","acreage":8.5,"enrichmentSource":"simulated","score":80,"scoreBreakdown":{"sizeMatch":21,"valueRange":20,"holdDuration":20,"taxStatus":3,"location":6,"ownerType":10}},{"id":51,"osmId":1000051,"lat":33.97666303559827,"lon":-84.4789755756771,"address":"5556 Howell Mill Rd, Atlanta, GA","buildingType":"industrial","name":null,"owner":"Cumberland Industrial LLC","ownerState":"NY","assessedValue":17794735,"buildingSF":127480,"yearBuilt":2004,"lastSaleDate":"2014-07-18","taxStatus":"Current","zoning":"M-1 Light Industrial","acreage":8.5,"enrichmentSource":"simulated","score":80,"scoreBreakdown":{"sizeMatch":21,"valueRange":20,"holdDuration":20,"taxStatus":3,"location":6,"ownerType":10}},{"id":74,"osmId":1000074,"lat":33.707623553469425,"lon":-84.07349402967235,"address":"3522 Memorial Dr, Atlanta, GA","buildingType":"industrial","name":null,"owner":"Alpharetta Flex Holdings LLC","ownerState":"MD","assessedValue":18186102,"buildingSF":127503,"yearBuilt":1976,"lastSaleDate":"2006-01-13","taxStatus":"Current","zoning":"I-1 Industrial","acreage":8.5,"enrichmentSource":"simulated","score":80,"scoreBreakdown":{"sizeMatch":21,"valueRange":20,"holdDuration":20,"taxStatus":3,"location":6,"ownerType":10}},{"id":75,"osmId":1000075,"lat":33.72109905073522,"lon":-84.10120212463774,"address":"5536 Jimmy Carter Blvd, Atlanta, GA","buildingType":"industrial","name":null,"owner":"Suwanee Distribution LLC","ownerState":"NC","assessedValue":20198836,"buildingSF":127504,"yearBuilt":2010,"lastSaleDate":"2015-12-24","taxStatus":"Current","zoning":"M-2 Heavy Industrial","acreage":8.5,"enrichmentSource":"simulated","score":80,"scoreBreakdown":{"sizeMatch":21,"valueRange":20,"holdDuration":20,"taxStatus":3,"location":6,"ownerType":10}},{"id":94,"osmId":1000094,"lat":33.964352317866265,"lon":-84.32894809630601,"address":"5246 Bolton Rd, Atlanta, GA","buildingType":"industrial","name":null,"owner":"Clarkston Warehouse LLC","ownerState":"IL","assessedValue":12538597,"buildingSF":127524,"yearBuilt":1981,"lastSaleDate":"2009-10-04","taxStatus":"Current","zoning":"M-2 Heavy Industrial","acreage":8.5,"enrichmentSource":"simulated","score":80,"scoreBreakdown":{"sizeMatch":21,"valueRange":20,"holdDuration":20,"taxStatus":3,"location":6,"ownerType":10}},{"id":101,"osmId":1000101,"lat":33.911887074785206,"lon":-83.98229218067814,"address":"5681 DeKalb Industrial Way, Atlanta, GA","buildingType":"industrial","name":null,"owner":"Dunwoody Asset Management LLC","ownerState":"GA","assessedValue":11326688,"buildingSF":127531,"yearBuilt":1994,"lastSaleDate":"2013-01-09","taxStatus":"Delinquent","zoning":"M-2 Heavy Industrial","acreage":8.5,"enrichmentSource":"simulated","score":80,"scoreBreakdown":{"sizeMatch":21,"valueRange":20,"holdDuration":20,"taxStatus":15,"location":2,"ownerType":2}},{"id":103,"osmId":1000103,"lat":34.04016144977898,"lon":-84.13042095446066,"address":"2995 DeKalb Industrial Way, Atlanta, GA","buildingType":"industrial","name":null,"owner":"Fulton Industrial Blvd Partners LLC","ownerState":"GA","assessedValue":15352963,"buildingSF":127533,"yearBuilt":1972,"lastSaleDate":"2012-05-05","taxStatus":"Delinquent","zoning":"I-1 Industrial","acreage":8.5,"enrichmentSource":"simulated","score":80,"scoreBreakdown":{"sizeMatch":21,"valueRange":20,"holdDuration":20,"taxStatus":15,"location":2,"ownerType":2}},{"id":178,"osmId":1000178,"lat":33.83348820417513,"lon":-84.22200054863653,"address":"4614 DeKalb Industrial Way, Atlanta, GA","buildingType":"industrial","name":null,"owner":"Piedmont Distribution LLC","ownerState":"GA","assessedValue":13299963,"buildingSF":127609,"yearBuilt":2002,"lastSaleDate":"2019-04-08","taxStatus":"Delinquent","zoning":"C-2 Commercial","acreage":8.51,"enrichmentSource":"simulated","score":80,"scoreBreakdown":{"sizeMatch":21,"valueRange":20,"holdDuration":14,"taxStatus":15,"location":8,"ownerType":2}},{"id":195,"osmId":1000195,"lat":34.00628019129511,"lon":-84.03811867147509,"address":"2517 Northside Dr, Atlanta, GA","buildingType":"industrial","name":null,"owner":"Conyers Distribution LLC","ownerState":"GA","assessedValue":16918284,"buildingSF":127626,"yearBuilt":1995,"lastSaleDate":"2015-11-05","taxStatus":"Delinquent","zoning":"M-1 Light Industrial","acreage":8.51,"enrichmentSource":"simulated","score":80,"scoreBreakdown":{"sizeMatch":21,"valueRange":20,"holdDuration":20,"taxStatus":15,"location":2,"ownerType":2}},{"id":138,"osmId":1000138,"lat":33.7702647748592,"lon":-84.37588217759121,"address":"1967 Northside Dr, Atlanta, GA","buildingType":"industrial","name":null,"owner":"Doraville Property Group LLC","ownerState":"NJ","assessedValue":24600590,"buildingSF":127568,"yearBuilt":1992,"lastSaleDate":"2013-11-01","taxStatus":"Current","zoning":"M-1 Light Industrial","acreage":8.5,"enrichmentSource":"simulated","score":79,"scoreBreakdown":{"sizeMatch":21,"valueRange":15,"holdDuration":20,"taxStatus":3,"location":10,"ownerType":10}},{"id":146,"osmId":1000146,"lat":33.83298713749553,"lon":-84.09628483680662,"address":"6704 Northside Dr, Atlanta, GA","buildingType":"industrial","name":null,"owner":"Piedmont Distribution LLC","ownerState":"GA","assessedValue":25403034,"buildingSF":127577,"yearBuilt":1994,"lastSaleDate":"2007-07-11","taxStatus":"Delinquent","zoning":"I-2 Industrial","acreage":8.51,"enrichmentSource":"simulated","score":79,"scoreBreakdown":{"sizeMatch":21,"valueRange":15,"holdDuration":20,"taxStatus":15,"location":6,"ownerType":2}},{"id":159,"osmId":1000159,"lat":33.96114225011426,"lon":-84.2515219890061,"address":"2191 Fulton Industrial Blvd, Atlanta, GA","buildingType":"industrial","name":null,"owner":"Peachtree Industrial Holdings LLC","ownerState":"NC","assessedValue":20965356,"buildingSF":127590,"yearBuilt":1986,"lastSaleDate":"2006-07-02","taxStatus":"Current","zoning":"C-2 Commercial","acreage":8.51,"enrichmentSource":"simulated","score":79,"scoreBreakdown":{"sizeMatch":21,"valueRange":19,"holdDuration":20,"taxStatus":3,"location":6,"ownerType":10}},{"id":53,"osmId":1000053,"lat":33.84081184621045,"lon":-84.08047794017985,"address":"612 Chattahoochee Ave, Atlanta, GA","buildingType":"industrial","name":null,"owner":"Clarkston Warehouse LLC","ownerState":"SC","assessedValue":21819502,"buildingSF":127482,"yearBuilt":1982,"lastSaleDate":"2013-06-12","taxStatus":"Current","zoning":"C-2 Commercial","acreage":8.5,"enrichmentSource":"simulated","score":78,"scoreBreakdown":{"sizeMatch":21,"valueRange":18,"holdDuration":20,"taxStatus":3,"location":6,"ownerType":10}},{"id":95,"osmId":1000095,"lat":33.92219368482213,"lon":-84.42518048493673,"address":"6060 Zonolite Rd, Atlanta, GA","buildingType":"industrial","name":null,"owner":"College Park Industrial Trust LLC","ownerState":"TX","assessedValue":14551618,"buildingSF":127525,"yearBuilt":1970,"lastSaleDate":"2018-09-15","taxStatus":"Current","zoning":"I-2 Industrial","acreage":8.5,"enrichmentSource":"simulated","score":77,"scoreBreakdown":{"sizeMatch":21,"valueRange":20,"holdDuration":15,"taxStatus":3,"location":8,"ownerType":10}},{"id":140,"osmId":1000140,"lat":33.844799973205475,"lon":-84.03495734132356,"address":"1631 Defoors Ferry Rd, Atlanta, GA","buildingType":"industrial","name":null,"owner":"Lilburn Commerce Group LLC","ownerState":"SC","assessedValue":13319841,"buildingSF":127570,"yearBuilt":1970,"lastSaleDate":"2011-10-22","taxStatus":"Current","zoning":"C-2 Commercial","acreage":8.5,"enrichmentSource":"simulated","score":77,"scoreBreakdown":{"sizeMatch":21,"valueRange":20,"holdDuration":20,"taxStatus":3,"location":3,"ownerType":10}},{"id":13,"osmId":1000013,"lat":34.093263107252554,"lon":-84.16313016597472,"address":"9039 Fulton Industrial Blvd, Atlanta, GA","buildingType":"industrial","name":null,"owner":"Peachtree Industrial Holdings LLC","ownerState":"OH","assessedValue":17813210,"buildingSF":127441,"yearBuilt":1972,"lastSaleDate":"2007-01-02","taxStatus":"Current","zoning":"M-2 Heavy Industrial","acreage":8.5,"enrichmentSource":"simulated","score":76,"scoreBreakdown":{"sizeMatch":21,"valueRange":20,"holdDuration":20,"taxStatus":3,"location":2,"ownerType":10}},{"id":48,"osmId":1000048,"lat":33.70826850646014,"lon":-84.32993417394341,"address":"3828 Zonolite Rd, Atlanta, GA","buildingType":"industrial","name":null,"owner":"Delta Corridor Holdings LLC","ownerState":"GA","assessedValue":11757821,"buildingSF":127477,"yearBuilt":1992,"lastSaleDate":"2008-01-22","taxStatus":"Current","zoning":"M-2 Heavy Industrial","acreage":8.5,"enrichmentSource":"simulated","score":76,"scoreBreakdown":{"sizeMatch":21,"valueRange":20,"holdDuration":20,"taxStatus":3,"location":10,"ownerType":2}},{"id":157,"osmId":1000157,"lat":33.88071167695402,"lon":-83.92614994805878,"address":"4907 Zonolite Rd, Atlanta, GA","buildingType":"industrial","name":null,"owner":"Decatur Commerce LLC","ownerState":"CA","assessedValue":16937193,"buildingSF":127588,"yearBuilt":2008,"lastSaleDate":"2008-08-09","taxStatus":"Current","zoning":"M-1 Light Industrial","acreage":8.51,"enrichmentSource":"simulated","score":76,"scoreBreakdown":{"sizeMatch":21,"valueRange":20,"holdDuration":20,"taxStatus":3,"location":2,"ownerType":10}},{"id":162,"osmId":1000162,"lat":33.94353842175895,"lon":-84.03959083653947,"address":"4846 Bolton Rd, Atlanta, GA","buildingType":"industrial","name":null,"owner":"Roswell Property Ventures LLC","ownerState":"SC","assessedValue":11696678,"buildingSF":127593,"yearBuilt":1998,"lastSaleDate":"2013-04-06","taxStatus":"Current","zoning":"C-2 Commercial","acreage":8.51,"enrichmentSource":"simulated","score":76,"scoreBreakdown":{"sizeMatch":21,"valueRange":20,"holdDuration":20,"taxStatus":3,"location":2,"ownerType":10}},{"id":165,"osmId":1000165,"lat":33.955070209926994,"lon":-84.33596899671105,"address":"3118 Constitution Rd, Atlanta, GA","buildingType":"industrial","name":null,"owner":"Dunwoody Asset Management LLC","ownerState":"GA","assessedValue":17739083,"buildingSF":127596,"yearBuilt":2010,"lastSaleDate":"2020-06-04","taxStatus":"Delinquent","zoning":"I-1 Industrial","acreage":8.51,"enrichmentSource":"simulated","score":76,"scoreBreakdown":{"sizeMatch":21,"valueRange":20,"holdDuration":12,"taxStatus":15,"location":6,"ownerType":2}},{"id":34,"osmId":1000034,"lat":34.094561682217346,"lon":-84.44289108909935,"address":"4727 Armour Dr, Atlanta, GA","buildingType":"industrial","name":null,"owner":"Suwanee Distribution LLC","ownerState":"TN","assessedValue":14180432,"buildingSF":127463,"yearBuilt":1966,"lastSaleDate":"2018-09-04","taxStatus":"Current","zoning":"C-2 Commercial","acreage":8.5,"enrichmentSource":"simulated","score":75,"scoreBreakdown":{"sizeMatch":21,"valueRange":20,"holdDuration":15,"taxStatus":3,"location":6,"ownerType":10}},{"id":54,"osmId":1000054,"lat":33.9151268663957,"lon":-84.06040806496553,"address":"7316 Buford Hwy, Atlanta, GA","buildingType":"industrial","name":null,"owner":"Peachtree Industrial Holdings LLC","ownerState":"NY","assessedValue":23831933,"buildingSF":127483,"yearBuilt":1971,"lastSaleDate":"2021-05-23","taxStatus":"Delinquent","zoning":"M-1 Light Industrial","acreage":8.5,"enrichmentSource":"simulated","score":75,"scoreBreakdown":{"sizeMatch":21,"valueRange":16,"holdDuration":10,"taxStatus":15,"location":3,"ownerType":10}},{"id":58,"osmId":1000058,"lat":34.02291444602694,"lon":-83.92304803516998,"address":"5079 Ellsworth Industrial Blvd, Atlanta, GA","buildingType":"industrial","name":null,"owner":"Conyers Distribution LLC","ownerState":"GA","assessedValue":16583533,"buildingSF":127487,"yearBuilt":1972,"lastSaleDate":"2018-10-04","taxStatus":"Delinquent","zoning":"M-1 Light Industrial","acreage":8.5,"enrichmentSource":"simulated","score":75,"scoreBreakdown":{"sizeMatch":21,"valueRange":20,"holdDuration":15,"taxStatus":15,"location":2,"ownerType":2}},{"id":68,"osmId":1000068,"lat":33.78692529940692,"lon":-84.35438466868771,"address":"8465 Fulton Industrial Blvd, Atlanta, GA","buildingType":"industrial","name":null,"owner":"Chattahoochee Warehouse Group LLC","ownerState":"GA","assessedValue":21410001,"buildingSF":127497,"yearBuilt":1997,"lastSaleDate":"2011-08-13","taxStatus":"Current","zoning":"I-2 Industrial","acreage":8.5,"enrichmentSource":"simulated","score":75,"scoreBreakdown":{"sizeMatch":21,"valueRange":19,"holdDuration":20,"taxStatus":3,"location":10,"ownerType":2}},{"id":97,"osmId":1000097,"lat":34.024702167208034,"lon":-83.84908023257654,"address":"3344 Ottley Dr, Atlanta, GA","buildingType":"industrial","name":null,"owner":"Doraville Property Group LLC","ownerState":"OH","assessedValue":18577755,"buildingSF":127527,"yearBuilt":1993,"lastSaleDate":"2016-07-08","taxStatus":"Current","zoning":"M-2 Heavy Industrial","acreage":8.5,"enrichmentSource":"simulated","score":75,"scoreBreakdown":{"sizeMatch":21,"valueRange":20,"holdDuration":19,"taxStatus":3,"location":2,"ownerType":10}},{"id":141,"osmId":1000141,"lat":33.804352002548384,"lon":-84.52942536913736,"address":"1471 Armour Dr, Atlanta, GA","buildingType":"industrial","name":null,"owner":"Southern Logistics Partners LLC","ownerState":"NJ","assessedValue":15333595,"buildingSF":127571,"yearBuilt":2004,"lastSaleDate":"2019-09-05","taxStatus":"Current","zoning":"M-1 Light Industrial","acreage":8.5,"enrichmentSource":"simulated","score":75,"scoreBreakdown":{"sizeMatch":21,"valueRange":20,"holdDuration":13,"taxStatus":3,"location":8,"ownerType":10}},{"id":158,"osmId":1000158,"lat":33.64298656507673,"lon":-83.83967548575221,"address":"5591 Bolton Rd, Atlanta, GA","buildingType":"industrial","name":null,"owner":"Clarkston Warehouse LLC","ownerState":"MD","assessedValue":18951259,"buildingSF":127589,"yearBuilt":1997,"lastSaleDate":"2016-07-19","taxStatus":"Current","zoning":"I-1 Industrial","acreage":8.51,"enrichmentSource":"simulated","score":75,"scoreBreakdown":{"sizeMatch":21,"valueRange":20,"holdDuration":19,"taxStatus":3,"location":2,"ownerType":10}}],"count":50,"lastScan":"2026-03-05T07:37:28.193Z"}</script>
+<script>
+// Load embedded data
+const rawData = JSON.parse(document.getElementById('propertyData').textContent);
+let allProperties = rawData.properties;
+let markers = {};
+let map, selectedId = null;
+
+function fmt(n) { return n ? n.toLocaleString() : '—'; }
+function fmtMoney(n) { return n ? '$' + n.toLocaleString() : '—'; }
+
+function scoreClass(s) {
+  if (s >= 80) return 'score-high';
+  if (s >= 65) return 'score-mid';
+  return 'score-low';
+}
+
+function scoreColor(s) {
+  if (s >= 80) return '#16a34a';
+  if (s >= 65) return '#d97706';
+  return '#dc2626';
+}
+
+function initMap() {
+  map = L.map('map').setView([33.78, -84.35], 10);
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+    attribution: '&copy; OpenStreetMap &copy; CARTO',
+    maxZoom: 19
+  }).addTo(map);
+}
+
+function addMarkers(props) {
+  // Clear existing
+  Object.values(markers).forEach(m => map.removeLayer(m));
+  markers = {};
+
+  props.forEach(p => {
+    const color = scoreColor(p.score);
+    const marker = L.circleMarker([p.lat, p.lon], {
+      radius: 7, fillColor: color, color: '#fff', weight: 1.5,
+      opacity: 1, fillOpacity: 0.85
+    }).addTo(map);
+
+    marker.bindPopup(`
+      <strong>${p.address}</strong><br>
+      Score: ${p.score} · ${fmt(p.buildingSF)} SF<br>
+      ${fmtMoney(p.assessedValue)} · ${p.taxStatus}
+    `);
+
+    marker.on('click', () => selectProperty(p.id));
+    markers[p.id] = marker;
+  });
+}
+
+function renderList(props) {
+  const list = document.getElementById('propList');
+  list.innerHTML = props.map(p => `
+    <div class="prop-card ${selectedId === p.id ? 'active' : ''}" 
+         onclick="selectProperty(${p.id})" data-id="${p.id}">
+      <div class="score-badge ${scoreClass(p.score)}">${p.score}</div>
+      <div class="address">${p.address}</div>
+      <div class="meta">
+        <span>${fmt(p.buildingSF)} SF</span>
+        <span>${fmtMoney(p.assessedValue)}</span>
+        <span>${p.taxStatus}</span>
+        <span>${p.zoning}</span>
+      </div>
+    </div>
+  `).join('');
+
+  // Update header stats
+  document.getElementById('propCount').textContent = props.length;
+  const avg = props.length ? Math.round(props.reduce((s,p) => s + p.score, 0) / props.length) : 0;
+  document.getElementById('avgScore').textContent = avg;
+}
+
+function selectProperty(id) {
+  selectedId = id;
+  const p = allProperties.find(x => x.id === id);
+  if (!p) return;
+
+  // Highlight in list
+  document.querySelectorAll('.prop-card').forEach(c => {
+    c.classList.toggle('active', parseInt(c.dataset.id) === id);
+  });
+
+  // Pan map
+  map.setView([p.lat, p.lon], 13);
+  if (markers[id]) markers[id].openPopup();
+
+  // Show detail panel
+  const panel = document.getElementById('detailPanel');
+  const maxScores = { sizeMatch: 25, valueRange: 20, holdDuration: 20, taxStatus: 15, location: 10, ownerType: 10 };
+  const labels = { sizeMatch: 'Size Match', valueRange: 'Value Range', holdDuration: 'Hold Duration', taxStatus: 'Tax Status', location: 'Location', ownerType: 'Owner Type' };
+
+  let breakdownHTML = '';
+  if (p.scoreBreakdown) {
+    breakdownHTML = `<div class="breakdown"><h4>Score Breakdown</h4>` +
+      Object.entries(p.scoreBreakdown).map(([k, v]) => {
+        const max = maxScores[k] || 25;
+        const pct = (v / max * 100).toFixed(0);
+        return `<div class="breakdown-bar">
+          <span class="bar-label">${labels[k] || k}</span>
+          <div class="bar-track"><div class="bar-fill" style="width:${pct}%"></div></div>
+          <span class="bar-val">${v}/${max}</span>
+        </div>`;
+      }).join('') + `</div>`;
+  }
+
+  document.getElementById('detailContent').innerHTML = `
+    <h3>${p.address}</h3>
+    <div class="detail-grid">
+      <div class="detail-item"><div class="label">Owner</div><div class="value">${p.owner || '—'}</div></div>
+      <div class="detail-item"><div class="label">Owner State</div><div class="value">${p.ownerState || '—'}</div></div>
+      <div class="detail-item"><div class="label">Score</div><div class="value" style="color:${scoreColor(p.score)};font-size:18px;">${p.score}</div></div>
+      <div class="detail-item"><div class="label">Building SF</div><div class="value">${fmt(p.buildingSF)}</div></div>
+      <div class="detail-item"><div class="label">Assessed Value</div><div class="value">${fmtMoney(p.assessedValue)}</div></div>
+      <div class="detail-item"><div class="label">Year Built</div><div class="value">${p.yearBuilt || '—'}</div></div>
+      <div class="detail-item"><div class="label">Last Sale</div><div class="value">${p.lastSaleDate || '—'}</div></div>
+      <div class="detail-item"><div class="label">Tax Status</div><div class="value">${p.taxStatus}</div></div>
+      <div class="detail-item"><div class="label">Zoning</div><div class="value">${p.zoning}</div></div>
+      <div class="detail-item"><div class="label">Acreage</div><div class="value">${p.acreage}</div></div>
+      <div class="detail-item"><div class="label">Building Type</div><div class="value">${p.buildingType}</div></div>
+    </div>
+    ${breakdownHTML}
+  `;
+  panel.classList.add('open');
+}
+
+function closeDetail() {
+  document.getElementById('detailPanel').classList.remove('open');
+  selectedId = null;
+  document.querySelectorAll('.prop-card').forEach(c => c.classList.remove('active'));
+}
+
+function applyFilters() {
+  const minScore = parseInt(document.getElementById('filterScore').value);
+  const taxFilter = document.getElementById('filterTax').value;
+  const sortBy = document.getElementById('sortBy').value;
+
+  let filtered = allProperties.filter(p => {
+    if (p.score < minScore) return false;
+    if (taxFilter && p.taxStatus !== taxFilter) return false;
+    return true;
+  });
+
+  if (sortBy === 'score') filtered.sort((a,b) => b.score - a.score);
+  else if (sortBy === 'value') filtered.sort((a,b) => b.assessedValue - a.assessedValue);
+  else if (sortBy === 'size') filtered.sort((a,b) => b.buildingSF - a.buildingSF);
+
+  renderList(filtered);
+  addMarkers(filtered);
+}
+
+// Init
+initMap();
+applyFilters();
+</script>
+</body>
+</html>
