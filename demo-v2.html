@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Convoy Capital — Property Intelligence</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Cormorant+Garamond:wght@300;400&display=swap');
+  *{margin:0;padding:0;box-sizing:border-box}
+  :root{--blue:rgb(0,48,91);--blue-l:rgba(0,48,91,0.06);--green:#16a34a;--amber:#d97706;--red:#dc2626;--bg:#fafaf9;--card:#fff;--border:#e8e4de;--text:#1a1816;--muted:#6b6560;--purple:#7c3aed}
+  body{font-family:'Inter',-apple-system,sans-serif;background:var(--bg);color:var(--text);height:100vh;overflow:hidden}
+
+  .header{background:var(--card);border-bottom:1px solid var(--border);padding:14px 24px;display:flex;align-items:center;justify-content:space-between;height:56px}
+  .header h1{font-family:'Cormorant Garamond',serif;font-weight:300;font-size:22px;color:var(--blue)}
+  .header .tag{font-size:9px;letter-spacing:3px;text-transform:uppercase;color:var(--muted);font-weight:500}
+
+  .app{display:grid;grid-template-columns:1fr 420px;height:calc(100vh - 56px)}
+
+  #map{width:100%;height:100%}
+
+  .sidebar{background:var(--card);border-left:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
+
+  .subject-card{padding:16px 20px;border-bottom:1px solid var(--border);background:var(--blue-l)}
+  .subject-card .label{font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--blue);font-weight:600;margin-bottom:6px}
+  .subject-card h3{font-size:14px;font-weight:600;margin-bottom:2px}
+  .subject-card .meta{font-size:11px;color:var(--muted);line-height:1.5}
+  .subject-card .thesis{font-size:12px;color:var(--blue);font-style:italic;margin-top:8px;line-height:1.5}
+
+  .phase-bar{padding:12px 20px;border-bottom:1px solid var(--border);display:flex;gap:0}
+  .phase{flex:1;text-align:center;padding:6px 4px;font-size:9px;letter-spacing:0.5px;font-weight:600;text-transform:uppercase;position:relative}
+  .phase.active{color:var(--blue)}
+  .phase.active::after{content:'';position:absolute;bottom:-1px;left:0;right:0;height:2px;background:var(--blue)}
+  .phase .phase-label{font-size:10px;font-weight:600}
+  .phase .phase-sub{font-size:9px;font-weight:400;color:var(--muted);margin-top:1px}
+
+  .comp-list{flex:1;overflow-y:auto}
+  .comp-card{padding:14px 20px;border-bottom:1px solid var(--border);cursor:pointer;transition:background 0.15s}
+  .comp-card:hover{background:var(--blue-l)}
+  .comp-card.active{background:var(--blue-l);border-left:3px solid var(--blue)}
+  .comp-card .campus-name{font-size:13px;font-weight:600;margin-bottom:1px}
+  .comp-card .location{font-size:11px;color:var(--blue);font-weight:500;margin-bottom:4px}
+  .comp-card .operator{font-size:11px;color:var(--muted);margin-bottom:6px}
+  .comp-card .comp-meta{font-size:11px;color:var(--muted);line-height:1.5}
+  .comp-card .comp-meta strong{color:var(--text);font-weight:500}
+  .comp-card .phase-tag{display:inline-block;font-size:9px;padding:2px 6px;border-radius:3px;font-weight:600;letter-spacing:0.5px;margin-right:4px}
+  .phase-1{background:#dbeafe;color:#1e40af}
+  .phase-2{background:#fef3c7;color:#92400e}
+  .phase-3{background:#d1fae5;color:#065f46}
+  .phase-all{background:#f3e8ff;color:#6b21a8}
+
+  /* Detail overlay */
+  .detail-overlay{display:none;position:absolute;top:0;left:0;right:420px;bottom:0;background:rgba(0,0,0,0.3);z-index:1000}
+  .detail-overlay.open{display:flex;justify-content:center;align-items:center}
+  .detail-modal{background:var(--card);border-radius:12px;max-width:700px;width:90%;max-height:85vh;overflow-y:auto;padding:28px;box-shadow:0 8px 32px rgba(0,0,0,0.15);position:relative}
+  .detail-modal .close-btn{position:absolute;top:12px;right:16px;background:none;border:none;font-size:20px;cursor:pointer;color:var(--muted)}
+  .detail-modal h2{font-size:16px;font-weight:600;margin-bottom:2px}
+  .detail-modal .loc{font-size:12px;color:var(--blue);margin-bottom:4px}
+  .detail-modal .operator-tag{font-size:11px;color:var(--muted);margin-bottom:12px}
+  .detail-modal p{font-size:12px;line-height:1.6;margin-bottom:10px}
+  .detail-modal h4{font-size:12px;font-weight:600;color:var(--blue);text-transform:uppercase;letter-spacing:0.5px;margin:16px 0 8px}
+  .detail-modal ul{font-size:12px;line-height:1.6;padding-left:16px;margin-bottom:10px}
+  .detail-modal li{margin-bottom:4px}
+  .detail-modal .relevance{background:var(--blue-l);border-radius:8px;padding:12px 16px;font-size:12px;line-height:1.5;margin-top:16px}
+  .detail-modal .relevance strong{color:var(--blue)}
+
+  .tenant-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:12px 0}
+  .tenant-item{font-size:11px;padding:8px 10px;background:var(--bg);border-radius:6px}
+  .tenant-item .cat{font-weight:600;color:var(--blue);font-size:10px;text-transform:uppercase;letter-spacing:0.5px}
+  .tenant-item .companies{color:var(--muted);margin-top:2px}
+
+  .leaflet-popup-content{font-family:'Inter',sans-serif;font-size:12px;line-height:1.5}
+
+  @media(max-width:900px){.app{grid-template-columns:1fr;grid-template-rows:50vh 1fr}.detail-overlay{right:0}}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <div class="tag">Property Intelligence</div>
+    <h1>Convoy Capital Partners</h1>
+  </div>
+  <div style="font-size:11px;color:var(--muted)">
+    Subject property → Profile → Match comparable properties → Map & Analyze
+  </div>
+</div>
+
+<div class="app">
+  <div style="position:relative">
+    <div id="map"></div>
+    <div class="detail-overlay" id="detailOverlay">
+      <div class="detail-modal" id="detailModal">
+        <button class="close-btn" onclick="closeDetail()">×</button>
+        <div id="detailContent"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="sidebar">
+    <div class="subject-card">
+      <div class="label">📍 Subject Property</div>
+      <h3>2011 Broadbank Ct, Ridgeville, SC 29472</h3>
+      <div class="meta">
+        59,600 SF flex/office/warehouse + 16,800 SF secondary · 13.5 AC<br>
+        NNN leased to Palmetto Tri-Venture (Google GC coalition) · 4.5yr remaining<br>
+        Pine Hill Business Campus · Adjacent to Google DC ($12B+ SC investment)
+      </div>
+      <div class="thesis">
+        Tenant retention: 85-90% · Extension probability: 60-70%<br>
+        Re-lease at $14-18/SF NNN blended · 6 comparable DC ecosystems identified
+      </div>
+    </div>
+
+    <div class="phase-bar">
+      <div class="phase active">
+        <div class="phase-label">Phase 1</div>
+        <div class="phase-sub">Construction</div>
+      </div>
+      <div class="phase">
+        <div class="phase-label">Phase 2</div>
+        <div class="phase-sub">Operations</div>
+      </div>
+      <div class="phase">
+        <div class="phase-label">Phase 3</div>
+        <div class="phase-sub">Ecosystem</div>
+      </div>
+    </div>
+
+    <div class="comp-list" id="compList"></div>
+  </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+var comps = [
+  {
+    id: "subject",
+    name: "2011 Broadbank Ct",
+    location: "Ridgeville, SC",
+    operator: "Google — $12B+ invested, $9B committed through 2027",
+    lat: 33.0975, lon: -80.3185,
+    isSubject: true,
+    phase: "1",
+    phaseLabel: "Phase 1 — Construction",
+    campusSize: "Multiple campuses: Berkeley County (2007+), Dorchester County Pine Hill & St. George (2024+)",
+    investment: "$12B+ total SC investment",
+    supportProperties: [
+      "59,600 SF flex + 16,800 SF secondary building on 13.5 acres",
+      "Leased to Palmetto Tri-Venture — coalition of GCs for Google buildout",
+      "Located inside Pine Hill Business Campus where Google is building"
+    ],
+    tenants: "Palmetto Tri-Venture (GC coalition for Google data center construction)",
+    keyInsight: "Google hasn't stopped building in SC since 2007. The $9B commitment through 2027 means construction activity — and demand for this building — extends well beyond the current 4.5yr lease. Dorchester County builds alone will take years.",
+    relevance: "This IS the subject property. The analysis below shows how similar properties adjacent to other hyperscale campuses have performed through construction → operations → ecosystem maturity phases. The pattern is consistent: data center support space maintains structural demand for decades.",
+    detail: "<p>Google's SC data center program is a rolling, multi-phase mega-project:</p><ul><li>Berkeley County campus expanding continuously since 2007 ($600M → $2.4B+)</li><li>Two NEW campuses broke ground in Dorchester County (Sept 2024) — $2B investment</li><li>Oct 2025: additional $9 BILLION committed through 2026-2027</li><li>Total SC investment now north of $12B across three campus locations</li></ul><p><strong>Tenant retention probability: 85-90%.</strong> 4.5 years of remaining lease aligns with Dorchester build-out timeline plus initial expansion phases.</p><p><strong>Extension probability: 60-70%.</strong> Data centers require ongoing MEP work, equipment upgrades, cooling retrofits. The GC ecosystem stays in orbit.</p><h4>Likely Next User (priority order)</h4><ol><li>DC operations/maintenance contractors</li><li>IT equipment staging & logistics</li><li>Power/cooling infrastructure vendors</li><li>Fiber/network companies</li><li>Traditional industrial/flex (Volvo, Redwood Materials, Walmart nearby)</li></ol><h4>Re-Leasing Context</h4><p>Charleston industrial is soft broadly (15-20% vacancy), but this isn't a generic submarket — it's a data center ecosystem submarket. Demand drivers are completely different from spec warehouse along I-26.</p><p>Model re-leasing at <strong>$14-18/SF NNN blended</strong>. 6-12 month downtime between tenants — data center support users will know this space is available.</p>"
+  },
+  {
+    id: "ashburn-crossing",
+    name: "Ashburn Crossing",
+    location: "Ashburn, VA — Loudoun County",
+    operator: "Data Center Alley — 25M+ SF, 150+ facilities",
+    lat: 39.0437, lon: -77.4875,
+    phase: "all",
+    phaseLabel: "All Phases — Most Mature Example",
+    campusSize: "25M+ SF of data centers, 150+ facilities in Loudoun County",
+    investment: "Billions across multiple hyperscalers (AWS, Microsoft, Google, Equinix, Digital Realty, etc.)",
+    supportProperties: [
+      "Ashburn Crossing (St. John Properties) — 80-acre flex/R&D business park adjacent to DC clusters",
+      "Ashburn Technology Park (St. John Properties) — 444,000 SF flex campus off Waxpool Road",
+      "Beaumeade Business Park (Merritt Properties) — light industrial/flex zoned for DC support",
+      "Concorde Industrial Park (Prologis, Sterling) — 268,700 SF flex-warehouse being rezoned"
+    ],
+    tenants: "Direct Line Global (tripled to 17,040 SF for IT deployment/decommissioning), MEP contractors, IT staging companies, network operations firms",
+    keyInsight: "Prologis is actively relocating flex/warehouse tenants — many of whom are data center support companies — as original buildings convert to data centers. The flex itself became so valuable it's converting to DC use.",
+    relevance: "The most mature example of the data center support ecosystem pattern. Went through all three phases: (1) construction support → (2) operations/IT services → (3) properties so valuable they converted to DCs themselves. Broadbank is buying Phase 1-2 in Ridgeville.",
+    detail: "<p>Loudoun County is the most mature data center ecosystem in the world. The pattern that played out here over 20+ years is now repeating at newer campuses — including Google's SC buildout.</p><h4>Key Properties</h4><ul><li><strong>Ashburn Crossing</strong> (St. John Properties) — 80-acre flex/R&D park. Tenant example: <strong>Direct Line Global</strong>, a DC solutions company, leased 17,040 SF (tripled from 5,520 SF). They do IT deployment, decommissioning, and logistics for surrounding campuses.</li><li><strong>Ashburn Technology Park</strong> — 444,000 SF flex campus. Tenants include DC MEP contractors, IT equipment staging companies, network operations firms.</li><li><strong>Beaumeade Business Park</strong> (Merritt Properties) — Light industrial/flex directly adjacent to hyperscale campuses. Zoned for DC support, light-medium industrial, office, manufacturing, warehouse.</li><li><strong>Concorde Industrial Park</strong> (Prologis) — 268,700 SF flex-warehouse being rezoned. Prologis is relocating existing flex tenants (many DC support companies) to new nearby space as buildings convert to data centers.</li></ul><h4>The Three-Phase Pattern</h4><p><strong>Phase 1:</strong> GCs and subcontractors lease nearby flex for offices, staging, material storage.<br><strong>Phase 2:</strong> Operations/maintenance contractors need permanent local space. MEP firms, critical power vendors, IT deployment firms move in.<br><strong>Phase 3:</strong> Support space becomes so valuable it converts to data center use. Original tenants relocate to new flex builds nearby.</p><p>This is the roadmap for what happens at Broadbank over the next 10-20 years.</p>"
+  },
+  {
+    id: "pryor",
+    name: "MidAmerica Industrial Park",
+    location: "Pryor, OK",
+    operator: "Google — 2nd largest data center, 1.4M SF, $3B+",
+    lat: 36.2950, lon: -95.3050,
+    phase: "2",
+    phaseLabel: "Phase 2 — Operations Ecosystem",
+    campusSize: "Google: 1.4M SF. Park: 9,000 acres, 80+ tenants",
+    investment: "$3B+ (Google alone)",
+    supportProperties: [
+      "9,000-acre master-planned industrial park housing 80+ tenants alongside Google",
+      "Spec flex buildings specifically built to capture the support ecosystem",
+      "Onsite airport, workforce training center"
+    ],
+    tenants: "Action Group Staffing (workforce provider), Northeast Technology Centers (training), manufacturing/support operations, maintenance contractors",
+    keyInsight: "The park was purpose-built to capture the ecosystem around the data center. 80+ tenants providing supplementary services demonstrates the scale of support demand a single hyperscaler generates.",
+    relevance: "Google-specific comparable. Shows what happens when a Google campus matures — 80+ tenants orbit the data center providing staffing, training, logistics, maintenance. Same operator as Broadbank's adjacent campus.",
+    detail: "<p>Google's second-largest data center campus, with $3B+ invested and 400+ employees on-campus. But the real story is the ecosystem that formed around it.</p><h4>The Support Ecosystem</h4><ul><li><strong>9,000-acre</strong> master-planned park housing <strong>80+ tenants</strong> alongside Google</li><li>Tenants include <strong>Action Group Staffing</strong> (workforce provider), <strong>Northeast Technology Centers</strong> (technical training), and various manufacturing/support operations</li><li>Park has its own <strong>onsite airport</strong>, <strong>workforce training center</strong>, and <strong>spec flex buildings</strong> specifically built to capture the support ecosystem</li></ul><h4>Relevance to Broadbank</h4><p>This is a Google campus — same operator as the adjacent buildout at Pine Hill. The 80+ tenant ecosystem at Pryor took about 15 years to fully develop, but the trajectory was clear within the first 5 years of Google's presence. Broadbank is at year ~2 of that same curve in Ridgeville.</p><p>Key difference: Pryor is rural Oklahoma with limited alternative demand drivers. Ridgeville has the broader Charleston industrial market as a fallback — meaning the downside case is still a functional industrial property in a growing metro, not stranded rural flex.</p>"
+  },
+  {
+    id: "new-albany",
+    name: "New Albany International Business Park",
+    location: "New Albany, OH",
+    operator: "Google, Meta, AWS, Microsoft, Compass, Cologix, Vantage",
+    lat: 40.0812, lon: -82.7879,
+    phase: "2",
+    phaseLabel: "Phase 2-3 — Multi-Hyperscaler Cluster",
+    campusSize: "Google: 447 acres. Multiple hyperscaler facilities in same business park",
+    investment: "Multi-billion across operators",
+    supportProperties: [
+      "New Albany International Business Park — flex/industrial/office surrounding DC campuses",
+      "DBT-DATA mission-critical support facilities under development within the park",
+      "Originally built for traditional industrial, now evolved into DC support ecosystem"
+    ],
+    tenants: "DBT-DATA (mission-critical support), local MEP contractor offices, equipment staging warehouses, technical training facilities",
+    keyInsight: "The business park was originally built for traditional industrial users but has evolved into a data center support ecosystem as hyperscalers arrived. Shows how DC presence transforms the tenant mix of surrounding properties.",
+    relevance: "Multi-hyperscaler density creates even stronger support demand than a single campus. The evolution from traditional industrial park to DC ecosystem park is the exact value trajectory Broadbank sits on.",
+    detail: "<p>The densest multi-hyperscaler cluster outside of Northern Virginia. What makes this comparable special is watching a traditional business park transform in real-time.</p><h4>The Evolution</h4><ul><li><strong>Google</strong> (as Montauk Innovations LLC) operates on a 447-acre campus</li><li><strong>Meta, AWS, Compass Datacenters, Cologix, Vantage, Edged</strong> all have facilities in the same business park</li><li>The business park was <strong>originally built for traditional industrial users</strong> but evolved into a DC support ecosystem</li><li><strong>DBT-DATA</strong> is developing mission-critical support facilities within the park specifically to serve DC tenants</li></ul><h4>What This Means for Broadbank</h4><p>New Albany shows that data center presence doesn't just create support demand — it fundamentally transforms the identity and tenant profile of surrounding commercial real estate. Properties that were generic flex/industrial become specialized DC ecosystem space commanding different rents and attracting a different (stickier) tenant base.</p>"
+  },
+  {
+    id: "quincy",
+    name: "Port Industrial Park",
+    location: "Quincy, WA",
+    operator: "Microsoft, Yahoo, Sabey, + 24 other DC operators",
+    lat: 47.2340, lon: -119.8526,
+    phase: "2",
+    phaseLabel: "Phase 2 — Operations Cluster",
+    campusSize: "27+ data center facilities in the Quincy area",
+    investment: "Multi-billion (Microsoft primary)",
+    supportProperties: [
+      "Port Industrial Park — industrial/flex buildings surrounding Microsoft campus",
+      "Surrounding industrial zone hosting MEP contractors and equipment suppliers"
+    ],
+    tenants: "MEP contractors, equipment suppliers, Sabey Data Centers (multi-tenant campus)",
+    keyInsight: "27+ DC facilities concentrated in a small rural town created an entire local economy built around data center support services. Every industrial property in the area is effectively a DC support property.",
+    relevance: "Rural market like Ridgeville — limited alternative demand. But DC concentration made all local industrial properties effectively captive to the ecosystem. Strong parallel to Pine Hill's position.",
+    detail: "<p>Quincy is a small agricultural town in central Washington that became one of America's most concentrated data center markets — entirely because of cheap hydroelectric power.</p><h4>The Cluster</h4><ul><li>Microsoft's major campus at Port Industrial Parkway is the anchor</li><li><strong>27+ data center facilities</strong> have concentrated in the area</li><li>Sabey Data Centers operates a multi-tenant campus nearby</li><li>Surrounding industrial zone hosts <strong>MEP contractors and equipment suppliers</strong> who service the entire cluster</li></ul><h4>Rural Market Parallel</h4><p>Like Ridgeville, Quincy is not a major metro — it's a rural area where data center presence IS the industrial demand driver. Every piece of flex/industrial real estate in the area is effectively DC support space, whether it was built for that purpose or not.</p><p>This is the most direct parallel to Broadbank's situation: a rural-adjacent location where the data center campus creates its own captive demand ecosystem for nearby flex/industrial.</p>"
+  },
+  {
+    id: "boydton",
+    name: "Microsoft Mecklenburg Campus",
+    location: "Boydton, VA",
+    operator: "Microsoft — 316,300+ SF, expanding to second campus",
+    lat: 36.6671, lon: -78.3875,
+    phase: "1-2",
+    phaseLabel: "Phase 1-2 — Expanding",
+    campusSize: "316,300+ SF primary campus + second six-building campus filed",
+    investment: "Hundreds of millions (Microsoft)",
+    supportProperties: [
+      "Rural location means all nearby flex/industrial is effectively captive to DC ecosystem",
+      "Limited alternative demand drivers — support contractors have few options for nearby space"
+    ],
+    tenants: "Construction contractors (ongoing expansion), maintenance operations",
+    keyInsight: "Rural location means any nearby flex/industrial is effectively captive to the data center ecosystem. There's no competing demand — if you have space near the campus, your tenants will be DC support.",
+    relevance: "Most direct structural parallel to Broadbank. Rural location, single hyperscaler anchor, ongoing expansion creating perpetual construction + operations demand. Recent filing for second campus confirms long-term commitment.",
+    detail: "<p>Microsoft's rural Virginia campus demonstrates what happens when a hyperscaler is the only game in town.</p><h4>The Campus</h4><ul><li>316,300+ SF primary campus built on a 175-acre graded pad</li><li>Expanded through multiple phases</li><li>Recently <strong>filed for a second six-building campus</strong> 10 miles from the original</li></ul><h4>The Captive Market Dynamic</h4><p>In rural Mecklenburg County, there is no competing industrial demand. Every flex/warehouse/office property near the campus exists to serve the data center ecosystem — directly or indirectly.</p><p>This creates an interesting dynamic for property owners: <strong>your tenant pool is narrow but extremely sticky.</strong> Support contractors don't have alternatives, and they need proximity to the campus. As long as Microsoft keeps operating (and expanding), demand for nearby support space is structural.</p><h4>Parallel to Broadbank</h4><p>Ridgeville is not as rural as Boydton, but the dynamic is similar — Google's campus will be the dominant industrial demand driver in the immediate area. The second-campus filing pattern (which Microsoft just did) is also relevant: Google's SC program has already expanded from Berkeley County to two new Dorchester County sites.</p>"
+  },
+  {
+    id: "prineville",
+    name: "Meta Prineville Campus",
+    location: "Prineville, OR",
+    operator: "Meta — first hyperscale greenfield campus (2011+)",
+    lat: 44.2828, lon: -120.7507,
+    phase: "1-2",
+    phaseLabel: "Phase 1-2 — Multi-Phase Expansion",
+    campusSize: "Multi-building campus, expanding since 2011",
+    investment: "Billions (Meta)",
+    supportProperties: [
+      "DPR Construction maintained significant multi-year local presence",
+      "Local industrial space for maintenance contractors, cooling system vendors, equipment logistics"
+    ],
+    tenants: "DPR Construction (primary GC, years-long presence), cooling system vendors, equipment logistics operators, maintenance contractors",
+    keyInsight: "In rural markets, GC teams lease whatever flex/office/warehouse is available nearby — often for years. DPR Construction's extended presence proves the long-duration demand pattern from construction activity alone.",
+    relevance: "Shows that GC presence persists for years in multi-phase builds. Palmetto Tri-Venture's 4.5yr lease at Broadbank is consistent with this pattern, and likely extends as Google continues building.",
+    detail: "<p>Meta's first-ever purpose-built data center, and a key proof point for how long construction teams stay at multi-phase hyperscale builds.</p><h4>The Construction Timeline</h4><ul><li>Meta has expanded through <strong>multiple phases since 2011</strong> — over 14 years of ongoing construction</li><li><strong>DPR Construction</strong> was the primary GC and maintained a significant local presence through the multi-year buildout</li><li>In rural central Oregon, GC teams lease <strong>whatever flex/office/warehouse is available nearby — often for years</strong></li></ul><h4>Key Lesson for Broadbank</h4><p>The most relevant data point: DPR Construction didn't show up, build one building, and leave. They maintained local operations for years as Meta expanded phase after phase. This is exactly the Palmetto Tri-Venture situation at Broadbank — they're there for the current build, but the builds keep coming.</p><p>Google's SC program has even more phases planned than Meta's Prineville campus had at this stage. The construction demand window is likely longer, not shorter.</p>"
+  }
+];
+
+var tenantTypes = [
+  { cat: "Electrical Contractors", companies: "Rosendin, Holder, Mass Electric" },
+  { cat: "MEP / HVAC", companies: "Comfort Systems, EMCOR, Limbach" },
+  { cat: "Critical Power / UPS", companies: "Vertiv, Schneider Electric, Eaton" },
+  { cat: "IT Deployment", companies: "Direct Line Global, Iron Mountain" },
+  { cat: "Operations & Staffing", companies: "Salute Mission Critical, Compass" },
+  { cat: "Fiber / Network", companies: "Zayo, Lumen, Crown Castle" },
+  { cat: "GC / Construction", companies: "DPR, Holder, Turner, Hensel Phelps" },
+  { cat: "Equipment Staging", companies: "Dell, HPE, SuperMicro depots" }
+];
+
+// ═══ MAP ═══
+var map = L.map('map').setView([38.5, -96], 4);
+L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+  attribution: '&copy; OpenStreetMap &copy; CARTO', maxZoom: 19
+}).addTo(map);
+
+var markers = {};
+
+// Draw lines from subject to comps
+var subjectLatLon = [comps[0].lat, comps[0].lon];
+
+comps.forEach(function(c) {
+  var isSubject = c.isSubject;
+  var color = isSubject ? '#dc2626' : 'rgb(0,48,91)';
+  var radius = isSubject ? 12 : 8;
+  var fillOpacity = isSubject ? 1 : 0.85;
+
+  if (!isSubject) {
+    L.polyline([subjectLatLon, [c.lat, c.lon]], {
+      color: 'rgba(0,48,91,0.15)', weight: 1, dashArray: '4 4'
+    }).addTo(map);
+  }
+
+  var marker = L.circleMarker([c.lat, c.lon], {
+    radius: radius, fillColor: color, color: '#fff', weight: 2,
+    opacity: 1, fillOpacity: fillOpacity
+  }).addTo(map);
+
+  marker.bindPopup(
+    '<strong>' + c.name + '</strong><br>' +
+    '<span style="color:#6b6560">' + c.location + '</span><br>' +
+    (isSubject ? '<span style="color:#dc2626;font-weight:600">Subject Property</span>' : c.operator.split('—')[0])
+  );
+
+  marker.on('click', function() { openDetail(c.id); });
+  markers[c.id] = marker;
+});
+
+// ═══ SIDEBAR ═══
+var listEl = document.getElementById('compList');
+listEl.innerHTML = comps.filter(function(c) { return !c.isSubject; }).map(function(c) {
+  var phaseClass = c.phase === 'all' ? 'phase-all' : c.phase === '1-2' ? 'phase-1' : 'phase-' + c.phase;
+  return '<div class="comp-card" data-id="' + c.id + '" onclick="openDetail(\'' + c.id + '\')">' +
+    '<span class="phase-tag ' + phaseClass + '">' + c.phaseLabel + '</span>' +
+    '<div class="campus-name">' + c.name + '</div>' +
+    '<div class="location">' + c.location + '</div>' +
+    '<div class="operator">' + c.operator + '</div>' +
+    '<div class="comp-meta">' + c.keyInsight + '</div>' +
+  '</div>';
+}).join('');
+
+// ═══ DETAIL ═══
+function openDetail(id) {
+  var c = comps.find(function(x) { return x.id === id; });
+  if (!c) return;
+
+  document.querySelectorAll('.comp-card').forEach(function(el) {
+    el.classList.toggle('active', el.dataset.id === id);
+  });
+
+  map.setView([c.lat, c.lon], c.isSubject ? 10 : 6);
+  markers[id].openPopup();
+
+  var propertiesHtml = c.supportProperties.map(function(p) { return '<li>' + p + '</li>'; }).join('');
+
+  var tenantGridHtml = '';
+  if (c.isSubject) {
+    tenantGridHtml = '<h4>DC Support Tenant Types (Nationwide Pattern)</h4><div class="tenant-grid">' +
+      tenantTypes.map(function(t) {
+        return '<div class="tenant-item"><div class="cat">' + t.cat + '</div><div class="companies">' + t.companies + '</div></div>';
+      }).join('') + '</div>';
+  }
+
+  document.getElementById('detailContent').innerHTML =
+    '<h2>' + c.name + '</h2>' +
+    '<div class="loc">' + c.location + '</div>' +
+    '<div class="operator-tag">' + c.operator + '</div>' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px;font-size:11px">' +
+      '<div style="padding:6px 0;border-bottom:1px solid #f0ede8"><span style="color:var(--muted)">Campus Scale</span><br><strong>' + c.campusSize + '</strong></div>' +
+      '<div style="padding:6px 0;border-bottom:1px solid #f0ede8"><span style="color:var(--muted)">Investment</span><br><strong>' + c.investment + '</strong></div>' +
+    '</div>' +
+    '<h4>Support Properties</h4><ul>' + propertiesHtml + '</ul>' +
+    '<h4>Notable Tenants</h4><p>' + c.tenants + '</p>' +
+    tenantGridHtml +
+    (c.detail || '') +
+    '<div class="relevance"><strong>Relevance to 2011 Broadbank:</strong> ' + c.relevance + '</div>';
+
+  document.getElementById('detailOverlay').classList.add('open');
+}
+
+function closeDetail() {
+  document.getElementById('detailOverlay').classList.remove('open');
+  map.setView([38.5, -96], 4);
+}
+</script>
+
+</body>
+</html>
