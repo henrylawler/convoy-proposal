@@ -15,7 +15,28 @@
   .header h1{font-family:'Cormorant Garamond',serif;font-weight:300;font-size:22px;color:var(--blue)}
   .header .tag{font-size:9px;letter-spacing:3px;text-transform:uppercase;color:var(--muted);font-weight:500}
 
-  .app{display:grid;grid-template-columns:1fr 420px;height:calc(100vh - 56px)}
+  .app{display:grid;grid-template-columns:380px 1fr 400px;height:calc(100vh - 56px)}
+
+  /* Chat Panel */
+  .chat-panel{background:var(--card);border-right:1px solid var(--border);display:flex;flex-direction:column}
+  .chat-header{padding:12px 16px;border-bottom:1px solid var(--border);font-size:12px;font-weight:600;color:var(--blue);letter-spacing:1px;text-transform:uppercase}
+  .chat-messages{flex:1;overflow-y:auto;padding:16px}
+  .chat-msg{margin-bottom:16px;max-width:95%}
+  .chat-msg.user{margin-left:auto}
+  .chat-msg .bubble{padding:10px 14px;border-radius:12px;font-size:13px;line-height:1.55}
+  .chat-msg.user .bubble{background:var(--blue);color:white;border-bottom-right-radius:4px}
+  .chat-msg.bot .bubble{background:#f5f3f0;color:var(--text);border-bottom-left-radius:4px}
+  .chat-msg .sender{font-size:10px;color:var(--muted);margin-bottom:3px;font-weight:500}
+  .chat-msg.user .sender{text-align:right}
+  .chat-msg .bubble strong{font-weight:600}
+  .chat-msg .bubble .highlight{color:var(--green);font-weight:600}
+  .chat-msg .bubble .warn{color:var(--red);font-weight:600}
+  .chat-msg .bubble .note{color:var(--amber);font-weight:600}
+  .chat-input-area{padding:12px 16px;border-top:1px solid var(--border);display:flex;gap:8px}
+  .chat-input{flex:1;font-family:'Inter',sans-serif;font-size:13px;padding:8px 12px;border:1px solid var(--border);border-radius:8px;background:var(--bg);outline:none}
+  .chat-input:focus{border-color:var(--blue)}
+  .chat-send{background:var(--blue);color:white;border:none;border-radius:8px;padding:8px 16px;font-size:12px;font-weight:600;cursor:pointer;font-family:'Inter',sans-serif}
+  .chat-send:hover{opacity:0.9}
 
   #map{width:100%;height:100%}
 
@@ -50,10 +71,10 @@
   .phase-all{background:#f3e8ff;color:#6b21a8}
 
   /* Detail overlay */
-  .detail-overlay{display:none;position:absolute;top:0;left:0;right:420px;bottom:0;background:rgba(0,0,0,0.3);z-index:1000}
-  .detail-overlay.open{display:flex;justify-content:center;align-items:center}
-  .detail-modal{background:var(--card);border-radius:12px;max-width:700px;width:90%;max-height:85vh;overflow-y:auto;padding:28px;box-shadow:0 8px 32px rgba(0,0,0,0.15);position:relative}
-  .detail-modal .close-btn{position:absolute;top:12px;right:16px;background:none;border:none;font-size:20px;cursor:pointer;color:var(--muted)}
+  .detail-overlay{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.3);z-index:1000}
+  .detail-overlay.open{display:flex;justify-content:center;align-items:flex-end}
+  .detail-modal{background:var(--card);border-radius:12px 12px 0 0;max-width:700px;width:100%;max-height:80vh;overflow-y:auto;padding:28px;padding-top:48px;box-shadow:0 -4px 32px rgba(0,0,0,0.15);position:relative}
+  .detail-modal .close-btn{position:sticky;top:0;right:0;float:right;background:var(--card);border:1px solid var(--border);border-radius:50%;width:32px;height:32px;font-size:18px;cursor:pointer;color:var(--muted);z-index:10;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 4px rgba(0,0,0,0.1)}
   .detail-modal h2{font-size:16px;font-weight:600;margin-bottom:2px}
   .detail-modal .loc{font-size:12px;color:var(--blue);margin-bottom:4px}
   .detail-modal .operator-tag{font-size:11px;color:var(--muted);margin-bottom:12px}
@@ -71,7 +92,18 @@
 
   .leaflet-popup-content{font-family:'Inter',sans-serif;font-size:12px;line-height:1.5}
 
-  @media(max-width:900px){.app{grid-template-columns:1fr;grid-template-rows:50vh 1fr}.detail-overlay{right:0}}
+  @media(max-width:900px){
+    .app{display:flex !important;flex-direction:column !important;height:auto !important;min-height:calc(100vh - 56px);grid-template-columns:none !important}
+    .chat-panel{order:1;max-height:50vh;border-right:none;border-bottom:1px solid var(--border)}
+    .chat-messages{max-height:35vh}
+    #map{height:50vh;width:100%}
+    .map-wrap{order:2;position:relative;height:50vh}
+    .sidebar{order:3;max-height:none;border-left:none;border-top:1px solid var(--border)}
+    .detail-overlay{align-items:flex-end !important}
+    .detail-modal{max-height:85vh;border-radius:12px 12px 0 0;padding:20px;padding-top:16px}
+    .detail-modal .close-btn{position:sticky;top:0;margin-bottom:8px}
+    body{overflow:auto}
+  }
 </style>
 </head>
 <body>
@@ -87,7 +119,16 @@
 </div>
 
 <div class="app">
-  <div style="position:relative">
+  <div class="chat-panel">
+    <div class="chat-header">Property Intelligence</div>
+    <div class="chat-messages" id="chatMessages"></div>
+    <div class="chat-input-area">
+      <input class="chat-input" id="chatInput" placeholder="Drop an address to profile..." onkeydown="if(event.key==='Enter')handleChat()">
+      <button class="chat-send" onclick="handleChat()">Analyze</button>
+    </div>
+  </div>
+
+  <div class="map-wrap" style="position:relative">
     <div id="map"></div>
     <div class="detail-overlay" id="detailOverlay">
       <div class="detail-modal" id="detailModal">
@@ -380,6 +421,43 @@ function closeDetail() {
   document.getElementById('detailOverlay').classList.remove('open');
   map.setView([38.5, -96], 4);
 }
+
+// ═══ CHAT ═══
+var chatData = [
+  { role: "user", sender: "Adam", text: "We are evaluating an opportunity to purchase 2011 Broadbank Ct which is leased for 4.5 more years to a GC contracted by Google for the data center buildout. Do a deep dive analysis on the probability of the tenant needing to remain in the space for the remaining term, likely next user, and re-leasing assumptions." },
+  { role: "bot", text: "<strong>TENANT RETENTION: 85-90% probability stays full term.</strong><br>Google's SC program is a rolling mega-project — $12B+ invested, $9B committed through 2027. The Dorchester builds alone will take years. Your tenant is literally inside Pine Hill where one of those campuses is going up.<br><br><strong>EXTENSION: 60-70% chance.</strong><br>Google hasn't stopped building since 2007. Data centers require ongoing MEP work, equipment upgrades, cooling retrofits. The GC ecosystem stays in orbit.<br><br><strong>LIKELY NEXT USER:</strong><br>1. DC operations/maintenance contractors<br>2. IT equipment staging & logistics<br>3. Power/cooling infrastructure vendors<br>4. Fiber/network companies<br>5. Traditional industrial (Volvo, Walmart nearby)<br><br><strong>RE-LEASING:</strong> Charleston industrial is soft broadly (15-20% vacancy), but this is a data center ecosystem submarket — structurally different. Model $14-18/SF NNN blended. 6-12 month downtime." },
+  { role: "user", sender: "Adam", text: "Give me comparable examples of properties that are data center campus adjacent — flex industrial/lab office with users that are part of ongoing data center operations. Search all similar data center campuses and put together a list." },
+  { role: "bot", text: "Found the pattern across <strong>6 major DC corridors</strong>. Mapping them now.<br><br><strong>1. Ashburn VA</strong> — Data Center Alley. 25M+ SF, 150+ facilities. Ashburn Crossing, Ashburn Tech Park, Beaumeade, Concorde Industrial. Direct Line Global tripled to 17K SF. Prologis relocating DC support tenants as flex converts to DC use.<br><br><strong>2. Pryor OK</strong> — Google's 2nd largest DC. 9,000-acre park, 80+ tenants in support ecosystem.<br><br><strong>3. New Albany OH</strong> — Google, Meta, AWS, Microsoft cluster. Business park evolved from traditional industrial into DC support.<br><br><strong>4. Quincy WA</strong> — Microsoft + 27 DC facilities. All local industrial = DC support.<br><br><strong>5. Boydton VA</strong> — Microsoft. Rural = captive market for DC support.<br><br><strong>6. Prineville OR</strong> — Meta. DPR Construction maintained years-long local flex presence.<br><br><strong>The pattern:</strong> Phase 1 (construction GCs) → Phase 2 (operations/IT) → Phase 3 (flex converts to DCs). You're buying Phase 1-2 in Ridgeville. <em>Click any pin on the map to explore.</em>" }
+];
+
+function renderChat() {
+  var container = document.getElementById('chatMessages');
+  container.innerHTML = chatData.map(function(m) {
+    var cls = m.role === 'user' ? 'user' : 'bot';
+    return '<div class="chat-msg ' + cls + '">' +
+      '<div class="sender">' + (m.sender || 'LeveeTech') + '</div>' +
+      '<div class="bubble">' + m.text + '</div>' +
+    '</div>';
+  }).join('');
+  container.scrollTop = container.scrollHeight;
+}
+
+function handleChat() {
+  var input = document.getElementById('chatInput');
+  var text = input.value.trim();
+  if (!text) return;
+  input.value = '';
+
+  var container = document.getElementById('chatMessages');
+  container.innerHTML += '<div class="chat-msg user"><div class="sender">You</div><div class="bubble">' + text + '</div></div>';
+
+  setTimeout(function() {
+    container.innerHTML += '<div class="chat-msg bot"><div class="sender">LeveeTech</div><div class="bubble">In the live system, I\'d pull county records, run the ownership trace, score the property, and find comparable deals across the country — just like I did for 2011 Broadbank. This demo shows the output of that workflow. Click any pin on the map to explore the analysis.</div></div>';
+    container.scrollTop = container.scrollHeight;
+  }, 600);
+}
+
+renderChat();
 </script>
 
 </body>
